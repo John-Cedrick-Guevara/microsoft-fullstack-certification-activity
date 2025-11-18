@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "JxH+BYtJaac=",
+  "success": true,
+  "projectFilePath": "D:\\2025 code shits lock in - Copy\\microsoft projects\\FullStackAppcd\\ServerApp\\ServerApp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\DELL\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.0\\microsoft.aspnetcore.openapi.10.0.0.nupkg.sha512",
+    "C:\\Users\\DELL\\.nuget\\packages\\microsoft.openapi\\2.0.0\\microsoft.openapi.2.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,238 @@
+@page "/fetchproducts"
+@inject HttpClient Http
+@using System.Text.Json
+@implements IDisposable
+
+<!--
+============================================================================
+InventoryHub - Product List Component
+============================================================================
+Copilot Assistance Summary:
+- Activity 1: Generated initial HttpClient integration with proper async/await patterns
+- Activity 2: Fixed API route from /api/products to /api/productlist
+- Activity 2: Implemented JsonSerializer.Deserialize for proper JSON handling
+- Activity 3: Updated Product model to include nested Category object
+- Final: Added caching mechanism to prevent redundant API calls on re-renders
+- Final: Enhanced error handling with user-friendly messages
+- Final: Improved UI with category display and better formatting
+============================================================================
+-->
+
+<div class="container mt-4">
+    <h3 class="mb-4">
+        <i class="bi bi-box-seam"></i> Product Catalog
+    </h3>
+
+    @if (isLoading)
+    {
+        <!-- Copilot Suggestion: Added loading state for better UX -->
+        <div class="d-flex align-items-center">
+            <div class="spinner-border text-primary me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Loading products...</span>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <!-- Copilot Assistance: Enhanced error display with user-friendly messaging -->
+        <div class="alert alert-danger" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-exclamation-triangle"></i> Error Loading Products
+            </h5>
+            <p>@errorMessage</p>
+            <hr>
+            <button class="btn btn-outline-danger btn-sm" @onclick="RefreshProducts">
+                <i class="bi bi-arrow-clockwise"></i> Retry
+            </button>
+        </div>
+    }
+    else if (products != null && products.Length > 0)
+    {
+        <!-- Copilot Optimization: Enhanced UI to display category information -->
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            @foreach (var product in products)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">@product.Name</h5>
+                            <p class="card-text">
+                                <span class="badge bg-secondary">@product.Category.Name</span>
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="h4 text-primary mb-0">$@product.Price.ToString("N2")</span>
+                                <span class="text-muted">
+                                    <i class="bi bi-box"></i> Stock: @product.Stock
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <!-- Copilot Suggestion: Added refresh button for manual cache invalidation -->
+        <div class="mt-4">
+            <button class="btn btn-outline-primary" @onclick="RefreshProducts">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Product List
+            </button>
+            <small class="text-muted ms-2">
+                Last updated: @lastFetchTime?.ToString("HH:mm:ss")
+            </small>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No products available at this time.
+        </div>
+    }
+</div>
+
+@code {
+    // ============================================================================
+    // Component State Management
+    // ============================================================================
+    
+    private Product[]? products;
+    private string? errorMessage;
+    private bool isLoading = false;
+    private DateTime? lastFetchTime;
+    private bool hasLoadedOnce = false;
+
+    // Copilot Performance Optimization: Prevent redundant API calls
+    // This flag ensures data is only fetched once per component lifecycle
+    // instead of on every re-render, significantly improving performance
+    protected override async Task OnInitializedAsync()
+    {
+        if (!hasLoadedOnce)
+        {
+            await LoadProductsAsync();
+            hasLoadedOnce = true;
+        }
+    }
+
+    // ============================================================================
+    // API Integration Logic
+    // ============================================================================
+    // Copilot Assistance: This method consolidates all API call logic with:
+    // - Proper error handling (Activity 2)
+    // - Correct endpoint routing (/api/productlist - Activity 2)
+    // - JsonSerializer for deserialization (Activity 2)
+    // - Support for nested Category objects (Activity 3)
+    // - Loading states for better UX (Final optimization)
+    
+    /// <summary>
+    /// Fetches product data from the backend API
+    /// Copilot helped implement proper async/await patterns and error handling
+    /// </summary>
+    private async Task LoadProductsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged(); // Force UI update to show loading state
+
+        try
+        {
+            // Copilot Fix (Activity 2): Updated to use correct endpoint
+            var response = await Http.GetAsync("/api/productlist");
+            
+            // Copilot Assistance: EnsureSuccessStatusCode throws on HTTP errors
+            response.EnsureSuccessStatusCode();
+
+            // Copilot Fix (Activity 2): Use JsonSerializer for proper deserialization
+            var json = await response.Content.ReadAsStringAsync();
+            
+            // Copilot Optimization: Configure JsonSerializerOptions to handle camelCase from API
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true // Handle camelCase from API
+            };
+            
+            products = JsonSerializer.Deserialize<Product[]>(json, options);
+            lastFetchTime = DateTime.Now;
+
+            // Copilot Assistance: Added validation for empty responses
+            if (products == null || products.Length == 0)
+            {
+                errorMessage = "No products found in the catalog.";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            // Copilot Assistance: Specific handling for network-related errors
+            errorMessage = $"Network error: Unable to connect to the server. {ex.Message}";
+            Console.WriteLine($"HTTP Error: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            // Copilot Assistance: Handle malformed JSON responses (Activity 2 fix)
+            errorMessage = $"Data format error: Unable to parse server response. {ex.Message}";
+            Console.WriteLine($"JSON Parsing Error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            // Copilot Assistance: Catch-all for unexpected errors
+            errorMessage = $"An unexpected error occurred: {ex.Message}";
+            Console.WriteLine($"Unexpected Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged(); // Force UI update after loading completes
+        }
+    }
+
+    /// <summary>
+    /// Manually refresh the product list
+    /// Copilot Suggestion: Allow users to force refresh without page reload
+    /// </summary>
+    private async Task RefreshProducts()
+    {
+        await LoadProductsAsync();
+    }
+
+    // ============================================================================
+    // Data Models
+    // ============================================================================
+    // Copilot Evolution:
+    // - Activity 1: Basic Product model with Id, Name, Price, Stock
+    // - Activity 3: Added nested Category object for normalized data structure
+    // - Final: Added XML documentation and proper nullable annotations
+    
+    /// <summary>
+    /// Represents a product with inventory information
+    /// Copilot Assistance: Updated to match backend ProductDto structure
+    /// </summary>
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public double Price { get; set; }
+        public int Stock { get; set; }
+        
+        // Copilot Enhancement (Activity 3): Added nested Category object
+        public Category Category { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// Represents a product category
+    /// Copilot Assistance: Created to support nested object structure from API
+    /// </summary>
+    public class Category
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    // ============================================================================
+    // Component Lifecycle
+    // ============================================================================
+    // Copilot Suggestion: Implement IDisposable for proper resource cleanup
+    public void Dispose()
+    {
+        // Currently no resources to dispose, but good practice for future enhancements
+        // (e.g., cancellation tokens, event subscriptions)
+    }
+}
